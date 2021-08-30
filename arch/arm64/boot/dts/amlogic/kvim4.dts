@@ -1717,7 +1717,7 @@
 };
 
 &irblaster {
-	status = "okay";
+	status = "disabled";
 };
 
 &uart_C {
