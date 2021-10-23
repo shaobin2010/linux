@@ -57,6 +57,7 @@ obj-$(CONFIG_AMLOGIC_CPU_INFO)          += cpu_info/
 obj-$(CONFIG_AMLOGIC_SOC_INFO) 		+= soc_info/
 obj-$(CONFIG_GATOR)	+= gator-driver/
 obj-y   += media_modules/
+obj-y  += isp_module/
 
 KBUILD_CFLAGS_MODULE += $(GKI_EXT_MODULE_PREDEFINE)
 
