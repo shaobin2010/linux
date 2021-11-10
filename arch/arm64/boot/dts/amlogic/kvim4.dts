@@ -555,7 +555,7 @@
 		aml-audio-card,dai-link@0 {
 			format = "i2s";
 			mclk-fs = <256>;
-			continuous-clock;
+			//continuous-clock;
 			//bitclock-inversion;
 			//frame-inversion;
 			/* master mode */
@@ -579,7 +579,7 @@
 				system-clock-frequency = <12288000>;
 			};
 			tdmacodec: codec {
-				sound-dai = <&dummy_codec>;
+				sound-dai = <&dummy_codec &es8316>;
 			};
 		};
 
@@ -1323,6 +1323,15 @@
 	pinctrl-names="default";
 	pinctrl-0=<&i2c0_pins1>;
 	clock-frequency = <100000>; /* default 100k */
+
+	es8316: es8316@10 {
+		compatible = "everest,es8316";
+		#sound-dai-cells = <0>;
+		reg = <0x10>;
+		status = "okay";
+		//   spk-con-gpio = <&gpio GPIOH_5 0>;
+		//     spk-mute-gpio = <&gpio GPIOA_12 0>;
+	};
 };
 
 &i2c1 {
