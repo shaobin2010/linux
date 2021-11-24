@@ -1361,6 +1361,11 @@
 	pinctrl-names="default";
 	pinctrl-0=<&i2c0_ao_pins1>;
 	clock-frequency = <100000>; /* default 100k */
+
+	hym8563-rtc {
+		compatible = "haoyu,hym8563";
+		reg = <0x51>;
+	};
 };
 
 /* SDIO */
@@ -1838,4 +1843,8 @@
 		<&a53pwm_opp_table1>,
 		<&a53pwm_opp_table2>,
 		<&a53pwm_opp_table3>;
+};
+
+&vrtc {
+	status = "disabled";
 };
