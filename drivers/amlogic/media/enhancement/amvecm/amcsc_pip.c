@@ -520,7 +520,7 @@ int hdr_policy_process(struct vinfo_s *vinfo,
 	} else if (is_vpp1(VD2_PATH) &&
 		vd_path == VD2_PATH &&
 		vpp_index != VPP_TOP1) {
-		pr_info("%s : error!!! expect amvecm_matrix_process had returned\n");
+		pr_info("%s : error!!! expect amvecm_matrix_process had returned\n", __func__);
 	}
 
 	tx_hdr10_plus_support = hdr10_plus_support;
