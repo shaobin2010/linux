@@ -143,6 +143,8 @@ struct meson_tsensor_data {
 	void (*tsensor_update_irqs)(struct meson_tsensor_data *data);
 };
 
+static struct meson_tsensor_data *g_tsensor_data_ptr;
+
 static void meson_report_trigger(struct meson_tsensor_data *p)
 {
 	char data[10], *envp[] = { data, NULL };
@@ -554,6 +556,7 @@ static int meson_get_temp(void *p, int *temp)
 out:
 	pm_runtime_mark_last_busy(data->dev);
 	pm_runtime_put_autosuspend(data->dev);
+
 	return 0;
 }
 
@@ -827,6 +830,9 @@ static int meson_tsensor_probe(struct platform_device *pdev)
 
 	pm_runtime_mark_last_busy(data->dev);
 	pm_runtime_put_autosuspend(data->dev);
+	if (data->id == 0)
+		g_tsensor_data_ptr = data;
+
 	if (data->id == 0)
 		g_tsensor_data_ptr = data;
 

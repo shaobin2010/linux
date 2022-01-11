@@ -38,8 +38,6 @@
 #define MCU_FAN_SPEED_MID_V2            0x48
 #define MCU_FAN_SPEED_HIGH_V2           0x64
 
-extern int meson_get_temperature(void);
-
 enum mcu_fan_mode {
 	MCU_FAN_MODE_MANUAL = 0,
 	MCU_FAN_MODE_AUTO,
@@ -245,6 +243,7 @@ static void mcu_fan_level_set(struct mcu_fan_data *fan_data, int level)
 	}
 }
 
+extern int meson_get_temperature(void);
 static void fan_work_func(struct work_struct *_work)
 {
 	if (is_mcu_fan_control_supported()) {
@@ -771,7 +770,6 @@ static int mcu_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	create_mcu_attrs();
 
 	return 0;
-
 exit:
 	kfree(g_mcu_data);
 	return ret;
@@ -842,4 +840,4 @@ module_i2c_driver(mcu_driver);
 
 MODULE_AUTHOR("Yan <yan-wyb@foxmail.com>");
 MODULE_DESCRIPTION("Khadas MCU control driver");
-//MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL");
