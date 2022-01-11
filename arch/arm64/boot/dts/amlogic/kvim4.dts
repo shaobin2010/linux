@@ -889,6 +889,14 @@
 		key-gpios = <&gpio  GPIOD_4  GPIO_ACTIVE_HIGH>;
 		detect_mode = <0>;/*0:polling mode, 1:irq mode*/
 	};
+
+	tps3851_wdt {
+		compatible = "linux,wdt-tps3851";
+		status = "disabled";
+		hw_margin_ms = <3>;
+		hw-gpios = <&gpio  GPIOD_12  GPIO_ACTIVE_HIGH>;
+	};
+
 };
 
 &audiobus {
@@ -1366,6 +1374,17 @@
 		compatible = "haoyu,hym8563";
 		reg = <0x51>;
 	};
+
+	khadas-mcu {
+		compatible = "khadas-mcu";
+		reg = <0x18>;
+		fan,trig_temp_level0 = <50>;
+		fan,trig_temp_level1 = <60>;
+		fan,trig_temp_level2 = <65>;
+		fan,trig_temp_level3 = <70>;
+		hwver = "VIM4.V11";
+	};
+
 };
 
 /* SDIO */
