@@ -23,10 +23,10 @@
 #define MCU_PWR_OFF_CMD_REG             0x80
 #define MCU_SHUTDOWN_NORMAL_REG         0x2c
 
-#define MCU_FAN_TRIG_TEMP_LEVEL0        50	// 50 degree if not set
-#define MCU_FAN_TRIG_TEMP_LEVEL1        60	// 60 degree if not set
-#define MCU_FAN_TRIG_TEMP_LEVEL2        70	// 70 degree if not set
-#define MCU_FAN_TRIG_MAXTEMP            80
+#define MCU_FAN_TRIG_TEMP_LEVEL0        60	// 50 degree if not set
+#define MCU_FAN_TRIG_TEMP_LEVEL1        80	// 60 degree if not set
+#define MCU_FAN_TRIG_TEMP_LEVEL2        100	// 70 degree if not set
+#define MCU_FAN_TRIG_MAXTEMP            105
 #define MCU_FAN_LOOP_SECS               (30 * HZ)	// 30 seconds
 #define MCU_FAN_TEST_LOOP_SECS          (5 * HZ)  // 5 seconds
 #define MCU_FAN_LOOP_NODELAY_SECS       0
@@ -87,6 +87,8 @@ struct mcu_fan_data {
 struct mcu_data {
 	struct i2c_client *client;
 	struct class *mcu_class;
+	int wol_enable;
+
 	enum khadas_board board;
 	enum khadas_board_hwver hwver;
 	struct mcu_fan_data fan_data;
@@ -94,6 +96,11 @@ struct mcu_data {
 
 struct mcu_data *g_mcu_data;
 
+extern void realtek_enable_wol(int enable, bool suspend);
+void mcu_enable_wol(int enable, bool suspend)
+{
+	realtek_enable_wol(enable, suspend);
+}
 static int i2c_master_reg8_send(const struct i2c_client *client,
 		const char reg, const char *buf, int count)
 {
@@ -117,38 +124,38 @@ static int i2c_master_reg8_send(const struct i2c_client *client,
 	return (ret == 1) ? count : ret;
 }
 
-//static int i2c_master_reg8_recv(const struct i2c_client *client,
-//		const char reg, char *buf, int count)
-//{
-//	struct i2c_adapter *adap = client->adapter;
-//	struct i2c_msg msgs[2];
-//	int ret;
-//	char reg_buf = reg;
+static int i2c_master_reg8_recv(const struct i2c_client *client,
+		const char reg, char *buf, int count)
+{
+	struct i2c_adapter *adap = client->adapter;
+	struct i2c_msg msgs[2];
+	int ret;
+	char reg_buf = reg;
 
-//	msgs[0].addr = client->addr;
-//	msgs[0].flags = client->flags;
-//	msgs[0].len = 1;
-//	msgs[0].buf = &reg_buf;
+	msgs[0].addr = client->addr;
+	msgs[0].flags = client->flags;
+	msgs[0].len = 1;
+	msgs[0].buf = &reg_buf;
 
-//	msgs[1].addr = client->addr;
-//	msgs[1].flags = client->flags | I2C_M_RD;
-//	msgs[1].len = count;
-//	msgs[1].buf = (char *)buf;
+	msgs[1].addr = client->addr;
+	msgs[1].flags = client->flags | I2C_M_RD;
+	msgs[1].len = count;
+	msgs[1].buf = (char *)buf;
 
-//	ret = i2c_transfer(adap, msgs, 2);
+	ret = i2c_transfer(adap, msgs, 2);
 
-//	return (ret == 2) ? count : ret;
-//}
+	return (ret == 2) ? count : ret;
+}
 
-//static int mcu_i2c_read_regs(struct i2c_client *client,
-//		char reg, char buf[], unsigned int len)
-//{
-//	int ret;
-//
-//	ret = i2c_master_reg8_recv(client, reg, buf, len);
-//
-//	return ret;
-//}
+static int mcu_i2c_read_regs(struct i2c_client *client,
+		char reg, char buf[], unsigned int len)
+{
+	int ret;
+
+	ret = i2c_master_reg8_recv(client, reg, buf, len);
+
+	return ret;
+}
 
 static int mcu_i2c_write_regs(struct i2c_client *client,
 		char reg, char buf[], int len)
@@ -560,9 +567,52 @@ static struct class_attribute fan_class_attrs[] = {
 	__ATTR(temp, 0644, show_fan_temp, NULL),
 };
 
+static ssize_t store_wol_enable(struct class *cls, struct class_attribute *attr,
+								const char *buf, size_t count)
+{
+	u8 reg[2];
+	int ret;
+	int enable;
+	int state;
+
+	if (kstrtoint(buf, 0, &enable))
+		return -EINVAL;
+
+	ret = mcu_i2c_read_regs(g_mcu_data->client, MCU_BOOT_EN_WOL_REG, 
+					reg, 1);
+	if (ret < 0) {
+		printk("write wol state err\n");
+		return ret;
+	}
+	state = (int)reg[0];
+	reg[0] = enable | (state & 0x02);
+	ret = mcu_i2c_write_regs(g_mcu_data->client, MCU_BOOT_EN_WOL_REG,
+				   	reg, 1);
+	if (ret < 0) {
+		printk("write wol state err\n");
+		return ret;
+	}
+
+	g_mcu_data->wol_enable = reg[0];
+	mcu_enable_wol(g_mcu_data->wol_enable, false);
+
+	printk("write wol state: %d\n", g_mcu_data->wol_enable);
+	return count;
+}
+
+static ssize_t show_wol_enable(struct class *cls,
+				struct class_attribute *attr, char *buf)
+{
+	int enable;
+
+	enable = g_mcu_data->wol_enable & 0x01;
+	return sprintf(buf, "%d\n", enable);
+}
+
 static struct class_attribute mcu_class_attrs[] = {
 	__ATTR(poweroff, 0644, NULL, store_mcu_poweroff),
 	__ATTR(rst, 0644, NULL, store_mcu_rst),
+	__ATTR(wol_enable, 0644, show_wol_enable, store_wol_enable),
 };
 
 static void create_mcu_attrs(void)
@@ -681,6 +731,9 @@ static int mcu_parse_dt(struct device *dev)
 
 static int mcu_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
+	u8 reg[2];
+	int ret;
+
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C))
 		return -ENODEV;
 
@@ -697,11 +750,19 @@ static int mcu_probe(struct i2c_client *client, const struct i2c_device_id *id)
 			(int)g_mcu_data->hwver);
 
 	g_mcu_data->client = client;
+	ret = mcu_i2c_read_regs(client, MCU_BOOT_EN_WOL_REG, reg, 1);
+	if (ret < 0)
+		goto exit;
+
+	g_mcu_data->wol_enable = (int)reg[0] & 0x01;
+	//printk("hlm wol_enable=%d\n", g_mcu_data->wol_enable);
+/*	if (g_mcu_data->wol_enable)
+                mcu_enable_wol(g_mcu_data->wol_enable, false);*/
 
 	if (is_mcu_fan_control_supported()) {
 		g_mcu_data->fan_data.mode = MCU_FAN_MODE_AUTO;
 		g_mcu_data->fan_data.level = MCU_FAN_LEVEL_0;
-		g_mcu_data->fan_data.enable = MCU_FAN_STATUS_DISABLE;
+		g_mcu_data->fan_data.enable = MCU_FAN_STATUS_ENABLE;
 
 		INIT_DELAYED_WORK(&g_mcu_data->fan_data.work, fan_work_func);
 		mcu_fan_level_set(&g_mcu_data->fan_data, 0);
@@ -709,6 +770,9 @@ static int mcu_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	create_mcu_attrs();
 
 	return 0;
+exit:
+	kfree(g_mcu_data);
+	return ret;
 }
 
 static int mcu_remove(struct i2c_client *client)

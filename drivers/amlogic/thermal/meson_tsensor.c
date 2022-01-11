@@ -560,18 +560,21 @@ out:
 	return 0;
 }
 
+static struct meson_tsensor_data *g_tsensor_data_ptr;
+
 int meson_get_temperature(void)
 {
-	int temp;
-	int ret;
+		int temp;
+		int ret;
 
-	ret = meson_get_temp(g_tsensor_data_ptr, &temp);
-	if (ret) {
-		pr_debug("meson_get_temp failed!\n");
-		return ret;
-	}
-	return temp / 1000;
+		ret = meson_get_temp(g_tsensor_data_ptr, &temp);
+		if (ret) {
+				pr_debug("meson_get_temp failed!\n");
+				return ret;
+		}
+		return temp / 1000;
 }
+
 EXPORT_SYMBOL(meson_get_temperature);
 
 static void meson_tsensor_work(struct work_struct *work)
@@ -827,6 +830,8 @@ static int meson_tsensor_probe(struct platform_device *pdev)
 
 	pm_runtime_mark_last_busy(data->dev);
 	pm_runtime_put_autosuspend(data->dev);
+	if (data->id == 0)
+		g_tsensor_data_ptr = data;
 
 	if (data->id == 0)
 		g_tsensor_data_ptr = data;
