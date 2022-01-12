@@ -61,7 +61,7 @@ MODULE_AUTHOR("Johnson Leung");
 MODULE_LICENSE("GPL");
 
 struct phy_device *g_phydev;
-int wol_enable;
+int wol_enable = 1;
 unsigned int support_external_phy_wol;
 
 static int rtl821x_read_page(struct phy_device *phydev)
