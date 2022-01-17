@@ -86,6 +86,7 @@ struct mcu_fan_data {
 
 struct mcu_data {
 	struct i2c_client *client;
+	struct class *wol_class;
 	struct class *mcu_class;
 	int wol_enable;
 
@@ -197,6 +198,23 @@ static int is_mcu_fan_control_supported(void)
 	} else {
 		return 0;
 	}
+}
+
+static bool is_mcu_wol_supported(void)
+{
+	// WOL is supported for:
+	// 1. Khadas VIM2
+	// 2. Khadas VIM3
+	// 3. khadas VIM4
+	if ((KHADAS_BOARD_VIM2 == g_mcu_data->board) ||
+			(KHADAS_BOARD_VIM3 == g_mcu_data->board) ||
+			(KHADAS_BOARD_VIM4 == g_mcu_data->board))
+		return 1;
+	else
+		return 0;
+
+
+
 }
 
 static void mcu_fan_level_set(struct mcu_fan_data *fan_data, int level)
@@ -609,15 +627,30 @@ static ssize_t show_wol_enable(struct class *cls,
 	return sprintf(buf, "%d\n", enable);
 }
 
+static struct class_attribute wol_class_attrs[] = {
+	__ATTR(enable, 0644, show_wol_enable, store_wol_enable),
+};
+
 static struct class_attribute mcu_class_attrs[] = {
 	__ATTR(poweroff, 0644, NULL, store_mcu_poweroff),
 	__ATTR(rst, 0644, NULL, store_mcu_rst),
-	__ATTR(wol_enable, 0644, show_wol_enable, store_wol_enable),
 };
 
 static void create_mcu_attrs(void)
 {
 	int i;
+
+	if (is_mcu_wol_supported()) {
+			g_mcu_data->wol_class = class_create(THIS_MODULE, "wol");
+			if (IS_ERR(g_mcu_data->wol_class)) {
+					pr_err("create wol_class debug class fail\n");
+					return;
+			}
+			for (i = 0; i < ARRAY_SIZE(wol_class_attrs); i++) {
+				if (class_create_file(g_mcu_data->wol_class, &wol_class_attrs[i]))
+					pr_err("create wol attribute %s fail\n", wol_class_attrs[i].attr.name);
+			}
+	}
 
 	g_mcu_data->mcu_class = class_create(THIS_MODULE, "mcu");
 	if (IS_ERR(g_mcu_data->mcu_class)) {
