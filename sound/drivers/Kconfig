@@ -235,4 +235,10 @@ config SND_AC97_POWER_SAVE_DEFAULT
 
 	  See SND_AC97_POWER_SAVE for more details.
 
+config SND_NDP10X
+    tristate "Enable SYNTIANT_NDP10X"
+	help
+	  Say Y here to include support for ndp
+	  To compile this driver as a module, choose M here
+
 endif	# SND_DRIVERS
